@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Jornada do Médium - Plataforma do Terreiro</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        body {
+            background-color: #080d1a;
+            color: #f3f4f6;
+            margin: 0;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+            text-align: center;
+        }
+        .header-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #d4af37;
+            object-fit: cover;
+        }
+        h1 { color: #d4af37; margin: 0; font-size: 0.9rem; }
+        p.subtitle { color: #10b981; font-size: 0.65rem; margin: 0; font-weight: bold; }
+
+        .card-panel {
+            background: #111827;
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            padding: 6px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        .entities-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 6px;
+            padding: 4px;
+            background: #0b131f;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            touch-action: pan-y;
+        }
+        .entity-card {
+            background: #1f2937;
+            border: 2px solid #374151;
+            border-radius: 6px;
+            padding: 4px 2px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .entity-card.selected {
+            border-color: #d4af37;
+            background: #1e3a8a;
+            box-shadow: 0 0 8px #d4af37;
+        }
+        .entity-avatar-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1.5px solid #d4af37;
+            margin-bottom: 2px;
+        }
+        .entity-name {
+            font-size: 0.55rem;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #d4af37;
+            background: #1f2937;
+            color: #fff;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            text-align: center;
+            touch-action: auto;
+        }
+        .btn {
+            background: #d4af37;
+            color: #0b131f;
+            border: none;
+            padding: 8px 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            width: 100%;
+            touch-action: auto;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .game-hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0b131f;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #d4af37;
+            font-size: 0.7rem;
+            margin-bottom: 4px;
+        }
+
+        .canvas-container {
+            position: relative;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+
+        #gameCanvas {
+            background: #0f172a;
+            border: 2px solid #d4af37;
+            border-radius: 6px;
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            touch-action: none;
+        }
+
+        .touch-hint {
+            font-size: 0.65rem;
+            color: #9ca3af;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 4px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: #111827;
+            border: 2px solid #d4af37;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            touch-action: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <img src="https://i.ibb.co/60wpJ3xG/Logo-terreiro.jpg" class="header-logo" alt="Logo Terreiro">
+        <div>
+            <h1>A Jornada do Médium</h1>
+            <p class="subtitle">Plataforma do Terreiro</p>
+        </div>
+    </div>
+
+    <div class="card-panel">
+        <div id="screen-start" class="screen active">
+            <h3 style="color: #d4af37; margin: 0 0 4px 0;">Escolha sua Entidade Guia</h3>
+            <input type="text" id="playerName" value="Médium" maxlength="12" placeholder="Seu apelido...">
+            <div class="entities-grid" id="entitiesGrid"></div>
+            <button class="btn" id="btnStartGame" onclick="startGame()" disabled>Selecione um Guia</button>
+        </div>
+
+        <div id="screen-game" class="screen">
+            <div class="game-hud">
+                <div><span id="hudEntity" style="color:#d4af37;">Guia</span> (<span id="hudName">Médium</span>)</div>
+                <div>✨ Axé: <strong id="hudScore" style="color: #fbbf24;">0</strong></div>
+                <div>❤️ <strong id="hudLives" style="color: #ef4444;">3</strong></div>
+                <div>🌿 Fase <strong id="hudStage">1</strong>/3</div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="gameCanvas" width="480" height="240"></canvas>
+            </div>
+
+            <div class="touch-hint">
+                <span>👈 Toque na Esquerda: <b>Andar</b></span>
+                <span>👉 Toque na Direita: <b>Pular</b></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="gameModal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="color: #d4af37; margin-top:0;"></h2>
+            <div id="modalBody" style="font-size: 0.85rem; margin-bottom: 12px;"></div>
+            <button class="btn" onclick="closeModalAndReset()">Continuar</button>
+        </div>
+    </div>
+
+    <script>
+        const entitiesList = [
+            { name: "Boiadeiro", img: "https://i.ibb.co/5gLgyczK/boiadeiro.jpg" },
+            { name: "Boiadeira", img: "https://i.ibb.co/HfY97m1Q/boiadeira.jpg" },
+            { name: "Preto Velho", img: "https://i.ibb.co/k6GfJWrY/preto-velho.jpg" },
+            { name: "Preta Velha", img: "https://i.ibb.co/sd9BPvWv/preta-velha.jpg" },
+            { name: "Exu", img: "https://i.ibb.co/JfqpCFL/exu.jpg" },
+            { name: "Pombo Gira", img: "https://i.ibb.co/LXzgCM58/pombo-gira.jpg" },
+            { name: "Erê Menino", img: "https://i.ibb.co/JjMSgpVS/menino.jpg" },
+            { name: "Erê Menina", img: "https://i.ibb.co/1DK8P50/menina.jpg" },
+            { name: "Baianos", img: "https://i.ibb.co/FbKVVDNH/baianos.jpg" },
+            { name: "Baianas", img: "https://i.ibb.co/whgzzmyQ/baianas.jpg" },
+            { name: "Caboclo", img: "https://i.ibb.co/6RdKhHD0/caboclo.jpg" },
+            { name: "Cabocla", img: "https://i.ibb.co/qYtp3mh7/cabloca.jpg" },
+            { name: "Cigano", img: "https://i.ibb.co/6RdGXtz2/cigano.png" },
+            { name: "Cigana", img: "https://i.ibb.co/Sw3KpbGY/cigana.jpg" },
+            { name: "Marinheiros", img: "https://i.ibb.co/Xxz6w90k/marinheiro.png" },
+            { name: "Zé Pilintra", img: "https://i.ibb.co/chHZZYW1/ze-pilintra.jpg" }
+        ];
+
+        const bgImages = { 1: new Image(), 2: new Image(), 3: new Image() };
+        bgImages[1].src = "https://i.ibb.co/fz3f0Q5H/Fundo-mata.jpg";
+        bgImages[2].src = "https://i.ibb.co/gLbJt8Qz/Fundo-praia.jpg";
+        bgImages[3].src = "https://i.ibb.co/7Jcr1j98/Fundo-Celta.jpg";
+
+        let selectedEntity = null;
+        let selectedImgObj = new Image();
+        let canvas, ctx;
+        let gameInterval = null;
+
+        let player = { x: 40, y: 100, w: 26, h: 26, vx: 0, vy: 0, speed: 3.0, jumpForce: -10.5, grounded: false };
+        let inputState = { left: false, right: false };
+        let score = 0, lives = 3, stage = 1, cameraX = 0, worldLength = 2200;
+        let platforms = [], coins = [], enemies = [];
+
+        // SISTEMA DE ÁUDIO WEB AUDIO API
+        let audioCtx = null;
+        let bgMusicInterval = null;
+
+        function initAudio() {
+            if(!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(freq, type, duration) {
+            try {
+                if(!audioCtx) return;
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function startBgMusic() {
+            if(bgMusicInterval) clearInterval(bgMusicInterval);
+            const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]; // Escala alegre
+            let idx = 0;
+            bgMusicInterval = setInterval(() => {
+                initAudio();
+                playSound(notes[idx % notes.length], 'triangle', 0.25);
+                idx++;
+            }, 380);
+        }
+
+        function stopBgMusic() {
+            if(bgMusicInterval) clearInterval(bgMusicInterval);
+        }
+
+        window.onload = function() {
+            renderEntityGrid();
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            setupKeyboard();
+            setupScreenTouchControls();
+        };
+
+        function renderEntityGrid() {
+            const grid = document.getElementById('entitiesGrid');
+            grid.innerHTML = '';
+            entitiesList.forEach((ent, idx) => {
+                const card = document.createElement('div');
+                card.className = 'entity-card';
+                card.id = `ent-card-${idx}`;
+                card.innerHTML = `<img src="${ent.img}" class="entity-avatar-small"><div class="entity-name">${ent.name}</div>`;
+                card.onclick = () => selectEntity(idx, ent);
+                grid.appendChild(card);
+            });
+        }
+
+        function selectEntity(idx, ent) {
+            document.querySelectorAll('.entity-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById(`ent-card-${idx}`).classList.add('selected');
+            selectedEntity = ent;
+            selectedImgObj.src = ent.img;
+            let btn = document.getElementById('btnStartGame');
+            btn.disabled = false;
+            btn.textContent = `Iniciar com ${ent.name}! ➔`;
+        }
+
+        function triggerJump() {
+            if(player.grounded) {
+                player.vy = player.jumpForce;
+                player.grounded = false;
+                playSound(587.33, 'sine', 0.15); // Som de pulo
+            }
+        }
+
+        function setupScreenTouchControls() {
+            const processTouches = (e) => {
+                e.preventDefault();
+                initAudio();
+                inputState.left = false;
+                inputState.right = false;
+
+                const rect = canvas.getBoundingClientRect();
+                for(let i = 0; i < e.touches.length; i++) {
+                    let touchX = e.touches[i].clientX - rect.left;
+                    let canvasWidth = rect.width;
+
+                    if(touchX > canvasWidth * 0.5) {
+                        triggerJump();
+                    } else {
+                        if(touchX < canvasWidth * 0.22) {
+                            inputState.left = true;
+                        } else {
+                            inputState.right = true;
+                        }
+                    }
+                }
+            };
+
+            const endTouches = (e) => {
+                if(e.touches.length === 0) {
+                    inputState.left = false;
+                    inputState.right = false;
+                } else {
+                    processTouches(e);
+                }
+            };
+
+            canvas.addEventListener('touchstart', processTouches, { passive: false });
+            canvas.addEventListener('touchmove', processTouches, { passive: false });
+            canvas.addEventListener('touchend', endTouches, { passive: false });
+            canvas.addEventListener('touchcancel', endTouches, { passive: false });
+        }
+
+        function setupKeyboard() {
+            window.addEventListener('keydown', e => {
+                initAudio();
+                if(e.key === 'ArrowLeft' || e.key === 'a') inputState.left = true;
+                if(e.key === 'ArrowRight' || e.key === 'd') inputState.right = true;
+                if((e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w') && player.grounded) triggerJump();
+            });
+            window.addEventListener('keyup', e => {
+                if(e.key === 'ArrowLeft' || e.key === 'a') inputState.left = false;
+                if(e.key === 'ArrowRight' || e.key === 'd') inputState.right = false;
+            });
+        }
+
+        function startGame() {
+            if(!selectedEntity) return;
+            initAudio();
+            startBgMusic();
+
+            document.getElementById('hudName').textContent = document.getElementById('playerName').value.trim() || "Médium";
+            document.getElementById('hudEntity').textContent = selectedEntity.name;
+            document.getElementById('screen-start').classList.remove('active');
+            document.getElementById('screen-game').classList.add('active');
+            score = 0; lives = 3; stage = 1;
+            loadStage(stage);
+            if(gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(updateGame, 1000 / 60);
+        }
+
+        function loadStage(st) {
+            stage = st;
+            document.getElementById('hudStage').textContent = stage;
+            player.x = 40; player.y = 100; player.vx = 0; player.vy = 0; cameraX = 0;
+            platforms = []; coins = []; enemies = [];
+
+            let groundPos = 0;
+            while(groundPos < worldLength - 200) {
+                let gW = 260 + Math.random() * 80;
+                platforms.push({ x: groundPos, y: 200, w: gW, h: 40, type: 'ground' });
+
+                if(groundPos > 150) {
+                    let speed1 = (Math.random() > 0.5 ? 1.2 : 2.0) * (stage * 0.2 + 0.9);
+                    enemies.push({ x: groundPos + 60, y: 178, w: 22, h: 22, vx: speed1, minX: groundPos + 10, maxX: groundPos + gW - 30, alive: true });
+
+                    if(gW > 280) {
+                        let speed2 = (Math.random() > 0.5 ? 1.0 : 1.8);
+                        enemies.push({ x: groundPos + 180, y: 178, w: 22, h: 22, vx: -speed2, minX: groundPos + 100, maxX: groundPos + gW - 20, alive: true });
+                    }
+                }
+                groundPos += gW + 85;
+            }
+
+            for(let i = 200; i < worldLength - 200; i += 150) {
+                let pY = 135 - (Math.abs(Math.sin(i)) * 35);
+                let pW = 85;
+                platforms.push({ x: i, y: pY, w: pW, h: 14, type: 'platform' });
+                coins.push({ x: i + 42, y: pY - 18, collected: false });
+
+                if(Math.random() > 0.3) {
+                    let topSpeed = (Math.random() > 0.5 ? 1.1 : 1.9);
+                    enemies.push({ x: i + 10, y: pY - 22, w: 20, h: 20, vx: topSpeed, minX: i + 5, maxX: i + pW - 22, alive: true });
+                }
+            }
+
+            platforms.push({ x: worldLength - 100, y: 110, w: 60, h: 90, type: 'conga' });
+            platforms.push({ x: worldLength - 140, y: 200, w: 140, h: 40, type: 'ground' });
+        }
+
+        function updateGame() {
+            if(inputState.left) player.vx = -player.speed;
+            else if(inputState.right) player.vx = player.speed;
+            else player.vx = 0;
+
+            player.x += player.vx;
+            if(player.x < 0) player.x = 0;
+            if(player.x > worldLength - player.w) player.x = worldLength - player.w;
+
+            player.vy += 0.45;
+            player.y += player.vy;
+            player.grounded = false;
+
+            platforms.forEach(p => {
+                if(p.type === 'conga') {
+                    if(player.x < p.x + p.w && player.x + player.w > p.x && player.y < p.y + p.h && player.y + player.h > p.y) nextStage();
+                    return;
+                }
+                if(player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h >= p.y && player.y + player.h <= p.y + 14 && player.vy >= 0) {
+                    player.y = p.y - player.h;
+                    player.vy = 0;
+                    player.grounded = true;
+                }
+            });
+
+            if(player.y > 240) loseLife();
+
+            coins.forEach(c => {
+                if(!c.collected && Math.abs(player.x + player.w/2 - c.x) < 20 && Math.abs(player.y + player.h/2 - c.y) < 20) {
+                    c.collected = true;
+                    score += 10;
+                    document.getElementById('hudScore').textContent = score;
+                    playSound(880, 'sine', 0.15); // Som de Axé (moeda)
+                }
+            });
+
+            enemies.forEach(e => {
+                if(!e.alive) return;
+                e.x += e.vx;
+                if(e.x < e.minX || e.x > e.maxX) e.vx *= -1;
+                if(player.x < e.x + e.w && player.x + player.w > e.x && player.y < e.y + e.h && player.y + player.h > e.y) {
+                    if(player.vy > 0 && player.y + player.h - player.vy <= e.y + 10) {
+                        e.alive = false;
+                        player.vy = -7.5;
+                        score += 50;
+                        document.getElementById('hudScore').textContent = score;
+                        playSound(330, 'square', 0.2); // Som ao eliminar Kiumba
+                    } else {
+                        loseLife();
+                    }
+                }
+            });
+
+            cameraX = Math.max(0, Math.min(player.x - 140, worldLength - 480));
+            renderDraw();
+        }
+
+        function renderDraw() {
+            ctx.clearRect(0, 0, 480, 240);
+
+            let currentBg = bgImages[stage];
+            if(currentBg && currentBg.complete && currentBg.naturalWidth !== 0) {
+                let bgX = -(cameraX * 0.3) % 480;
+                ctx.drawImage(currentBg, bgX, 0, 480, 240);
+                ctx.drawImage(currentBg, bgX + 480, 0, 480, 240);
+            } else {
+                ctx.fillStyle = stage === 1 ? "#092e1b" : (stage === 2 ? "#0c2b4e" : "#2c0e4a");
+                ctx.fillRect(0, 0, 480, 240);
+            }
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            platforms.forEach(p => {
+                if(p.type === 'ground') {
+                    ctx.fillStyle = stage === 1 ? "#15803d" : (stage === 2 ? "#1d4ed8" : "#6b21a8");
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                    ctx.fillStyle = "#86efac";
+                    ctx.fillRect(p.x, p.y, p.w, 3);
+                } else if(p.type === 'conga') {
+                    ctx.fillStyle = "#d4af37";
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                    ctx.fillStyle = "#0b131f";
+                    ctx.font = "bold 10px sans-serif";
+                    ctx.fillText("CONGÁ", p.x + 12, p.y + 45);
+                } else {
+                    ctx.fillStyle = "rgba(30, 41, 59, 0.9)";
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                    ctx.strokeStyle = "#d4af37";
+                    ctx.strokeRect(p.x, p.y, p.w, p.h);
+                }
+            });
+
+            coins.forEach(c => {
+                if(!c.collected) {
+                    ctx.fillStyle = "#fbbf24";
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+                }
+            });
+
+            enemies.forEach(e => {
+                if(e.alive) {
+                    ctx.fillStyle = "#dc2626";
+                    ctx.beginPath();
+                    ctx.arc(e.x + e.w/2, e.y + e.h/2, e.w/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#7f1d1d";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    ctx.fillStyle = "#991b1b";
+                    ctx.beginPath();
+                    ctx.moveTo(e.x + 3, e.y + 4);
+                    ctx.lineTo(e.x + 7, e.y - 3);
+                    ctx.lineTo(e.x + 10, e.y + 3);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(e.x + e.w - 3, e.y + 4);
+                    ctx.lineTo(e.x + e.w - 7, e.y - 3);
+                    ctx.lineTo(e.x + e.w - 10, e.y + 3);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#fef08a";
+                    ctx.beginPath();
+                    ctx.arc(e.x + 6, e.y + 9, 2.5, 0, Math.PI * 2);
+                    ctx.arc(e.x + 14, e.y + 9, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#000";
+                    ctx.beginPath();
+                    ctx.arc(e.x + 6, e.y + 9, 1, 0, Math.PI * 2);
+                    ctx.arc(e.x + 14, e.y + 9, 1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = "#fff";
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(e.x + 5, e.y + 16);
+                    ctx.lineTo(e.x + 8, e.y + 14);
+                    ctx.lineTo(e.x + 11, e.y + 16);
+                    ctx.lineTo(e.x + 14, e.y + 14);
+                    ctx.stroke();
+                }
+            });
+
+            if(selectedImgObj.complete && selectedImgObj.naturalWidth !== 0) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(player.x + player.w/2, player.y + player.h/2, player.w/2, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(selectedImgObj, player.x, player.y, player.w, player.h);
+                ctx.restore();
+
+                ctx.strokeStyle = "#d4af37";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(player.x + player.w/2, player.y + player.h/2, player.w/2, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = "#38bdf8";
+                ctx.fillRect(player.x, player.y, player.w, player.h);
+            }
+
+            ctx.restore();
+        }
+
+        function loseLife() {
+            lives--;
+            document.getElementById('hudLives').textContent = lives;
+            playSound(130, 'sawtooth', 0.4); // Som de dano/morte
+            if(lives <= 0) {
+                clearInterval(gameInterval);
+                stopBgMusic();
+                showModal("Fim da Caminhada", `As energias se esgotaram. Tente novamente!`);
+            } else {
+                player.x = 40; player.y = 100; player.vy = 0;
+            }
+        }
+
+        function nextStage() {
+            clearInterval(gameInterval);
+            if(stage < 3) {
+                stage++;
+                showModal(`Etapa Concluída!`, `Indo para a fase ${stage}...`, () => {
+                    loadStage(stage);
+                    gameInterval = setInterval(updateGame, 1000 / 60);
+                });
+            } else {
+                stopBgMusic();
+                showModal("🏆 VITÓRIA!", `Parabéns! Você chegou ao Congá!`);
+            }
+        }
+
+        function showModal(title, msg, callback) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').textContent = msg;
+            document.getElementById('gameModal').style.display = 'flex';
+            window.modalCallback = callback;
+        }
+
+        function closeModalAndReset() {
+            document.getElementById('gameModal').style.display = 'none';
+            if(window.modalCallback) {
+                window.modalCallback();
+                window.modalCallback = null;
+            } else {
+                stopBgMusic();
+                document.getElementById('screen-game').classList.remove('active');
+                document.getElementById('screen-start').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
